@@ -14,7 +14,9 @@ import com.pubnub.api.models.consumer.pubsub.PNMessageResult
 import com.pubnub.api.models.consumer.pubsub.PNPresenceEventResult
 import java.util.*
 import android.os.Build
+import android.widget.TextView
 import com.pubnub.api.endpoints.pubsub.Subscribe
+import com.pubnub.api.models.consumer.PNPublishResult
 import com.pubnub.api.models.consumer.access_manager.PNAccessManagerGrantResult
 
 
@@ -24,24 +26,26 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-
+        val subscribeText = findViewById<TextView>(R.id.textViewSubscribe)
 
         val pnConfiguration = PNConfiguration()
         pnConfiguration.subscribeKey = "sub-c-87dbd99c-e470-11e8-8d80-3ee0fe19ec50"
         pnConfiguration.publishKey = "pub-c-09557b6c-9513-400f-a915-658c0789e264"
-        pnConfiguration.secretKey = "true"
+        pnConfiguration.secretKey = "sec-c-MWQ3ZTJlZDMtNTQ5OC00OTgyLThjNGUtYmE2ZDhkMTFkNDE4"
+        pnConfiguration.isSecure = true
+        pnConfiguration.authKey = "auth-key"
         val pubNub = PubNub(pnConfiguration)
 
         pubNub.run {
             grant()
-                    .channels(Arrays.asList("Whiteboard"))
+                    .channels(Arrays.asList("whiteboard"))
                     .authKeys(Arrays.asList("auth-key"))
                     .write(isEmulator()) // allow those keys to write (false by default)
                     .manage(isEmulator()) // allow those keys to manage channel groups (false by default)
                     .read(isEmulator()) // allow keys to read the subscribe feed (false by default)
                     .ttl(12337) // how long those keys will remain valid (0 for eternity)
                     .async(object: PNCallback<PNAccessManagerGrantResult>() {
-                        override fun onResponse(result: PNAccessManagerGrantResult, status: PNStatus) {
+                        override fun onResponse(result: PNAccessManagerGrantResult?, status: PNStatus) {
                             // PNAccessManagerGrantResult is a parsed and abstracted response from server
                         }
                     })
@@ -50,23 +54,27 @@ class MainActivity : AppCompatActivity() {
 
                 }
                 override fun message(pubnub: PubNub, message: PNMessageResult) {
-
+                    Log.d("tag", message.toString())
+                    runOnUiThread {
+                        subscribeText.text = message.message.asString
+                    }
                 }
                 override fun presence(pubnub: PubNub, presence: PNPresenceEventResult) {
                 }
             })
             subscribe()
-                    .channels(Arrays.asList("Whiteboard")) // subscribe to channels
+                    .channels(Arrays.asList("whiteboard")) // subscribe to channels
                     .execute()
-            history()
-                    .channel("Whiteboard") // where to fetch history from
-                    .count(100) // how many items to fetch
-                    .async(object : PNCallback<PNHistoryResult>() {
-                        override fun onResponse(result: PNHistoryResult, status: PNStatus) {
-                            Log.d("result", result.messages.toString())
+            publish()
+                    .message("I have permissions Granted!")
+                    .channel("whiteboard")
+                    .async(object : PNCallback<PNPublishResult>() {
+                        override fun onResponse(result: PNPublishResult, status: PNStatus) {
+                            Log.d("response", status.toString())
                         }
                     })
         }
+
     }
     private fun isEmulator(): Boolean {
         return (Build.FINGERPRINT.startsWith("generic")
